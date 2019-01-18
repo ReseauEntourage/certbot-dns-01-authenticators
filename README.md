@@ -21,3 +21,5 @@ docker run -it --rm \
     --manual-cleanup-hook /gandi-livedns/cleanup.py \
     --domains example.com,*.example.com
 ```
+
+or see `certbot.sh` which is a (work in progress) wrapper.
