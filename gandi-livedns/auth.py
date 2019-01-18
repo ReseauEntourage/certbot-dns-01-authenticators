@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
 # This program is free software: you can redistribute it and/or modify
@@ -45,43 +45,39 @@ headers = {
     'X-Api-Key': livedns_apikey,
 }
 
-response = requests.get(livedns_api + "domains" + sharing_param, headers=headers)
+challenges_href = livedns_api + "domains/" + certbot_domain + "/records/_acme-challenge/TXT" + sharing_param
+
+response = requests.get(challenges_href, headers=headers)
 
 if (response.ok):
-    domains = response.json()
+    record = response.json()
+elif response.status_code == requests.codes.not_found:
+    record = None
 else:
+    print("Failed to look for existing _acme-challenge records")
     response.raise_for_status()
     exit(1)
 
-domain_index = next((index for (index, d) in enumerate(domains) if d["fqdn"] == certbot_domain), None)
+quoted_challenge = '"{}"'.format(certbot_validation)
 
-if domain_index == None:
-    # domain not found
-    print("The requested domain " + certbot_domain + " was not found in this gandi account")
-    exit(1)
-
-domain_records_href = domains[domain_index]["domain_records_href"]
-
-response = requests.get(domain_records_href + "/_acme-challenge" + sharing_param, headers=headers)
-
-if (response.ok):
-    domains = response.json()
-    if len(domains) != 0:
-        print("Existing _acme-challenge record found, exiting")
-        exit(1)
+if record == None:
+    print("creating record")
+    new_record = {
+      "rrset_ttl": 300,
+      "rrset_values": [certbot_validation]
+    }
+    response = requests.post(challenges_href, headers=headers, json=new_record)
+elif quoted_challenge in record["rrset_values"]:
+    print("this challenge already exists in the record")
+    exit(0)
 else:
-    print("Failed to look for existing _acme-challenge record")
-    response.raise_for_status()
-    exit(1)
+    print("adding new challenge to the existing record")
+    updated_record = {
+      "rrset_ttl": 300,
+      "rrset_values": record["rrset_values"] + [certbot_validation]
+    }
+    response = requests.put(challenges_href, headers=headers, json=updated_record)
 
-newrecord = {
-  "rrset_name": "_acme-challenge",
-  "rrset_type": "TXT",
-  "rrset_ttl": 300,
-  "rrset_values": [certbot_validation]
-}
-
-response = requests.post(domain_records_href + sharing_param, headers=headers, json=newrecord)
 if (response.ok):
     print("all good, entry created")
     #pp.pprint(response.content)
