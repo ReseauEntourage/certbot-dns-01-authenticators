@@ -25,8 +25,16 @@ function authentication_options {
   esac
 }
 
+function tty_options {
+  if [ -t 1 ]; then
+    # stdout is a tty
+    echo -it
+  fi
+}
+
 docker run \
-    -it --rm \
+    $(tty_options) \
+    --rm \
     --name certbot \
     --volume "$config_dir:/etc/letsencrypt" \
     --volume "$work_dir:/var/lib/letsencrypt" \
