@@ -26,8 +26,8 @@ function authentication_options {
 }
 
 function tty_options {
-  if [ -t 1 ]; then
-    # stdout is a tty
+  if [ -t 0 ]; then
+    # stdin is a tty
     echo -it
   fi
 }
